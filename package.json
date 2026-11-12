@@ -1,0 +1,31 @@
+{
+  "name": "@ikenga/skill-akuko",
+  "version": "0.1.0",
+  "description": "akuko: an agent skill that takes a short story, treatment or film script to a short film, one reviewed stage at a time (screenplay, breakdown, sketch board, bibles, key frames, motion, lip-sync, sound, DaVinci Resolve handoff). Holds the skill, the akuko.json project format (Zod + JSON Schema) and converters.",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "agent-skills",
+    "skills",
+    "ikenga",
+    "akuko",
+    "film",
+    "storyboard"
+  ],
+  "homepage": "https://ikenga.dev",
+  "bugs": {
+    "url": "https://github.com/ikenga-hq/akuko/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ikenga-hq/akuko.git"
+  },
+  "license": "Apache-2.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.6"
+  },
+  "files": [
+    "skills/"
+  ]
+}

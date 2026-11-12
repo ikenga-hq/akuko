@@ -1,0 +1,20 @@
+{
+  "name": "akuko-skill",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Runtime dependencies of the akuko skill. Run `npm install` in this folder once; `bash scripts/doctor.sh` checks it.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "dependencies": {
+    "@ikenga/studio-schema": "file:./vendor/studio-schema",
+    "zod": "3.25.76"
+  },
+  "optionalDependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "jsdom": "29.1.1"
+  }
+}
