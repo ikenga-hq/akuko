@@ -1,7 +1,7 @@
 {
   "name": "@ikenga/studio-schema",
   "version": "0.2.0",
-  "description": "Vendored copy of @ikenga/studio-schema (built from ikenga-hq/ikenga-pkgs packages/apps/studio/shared at 3212414). It imports zod, which resolves from the skill folder's node_modules, so it declares no dependencies of its own (one zod for both).",
+  "description": "Vendored copy of @ikenga/studio-schema (built from ikenga-hq/ikenga-pkgs packages/apps/studio/shared at 4dd3725). It imports zod, which resolves from the skill folder's node_modules, so it declares no dependencies of its own (one zod for both).",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",

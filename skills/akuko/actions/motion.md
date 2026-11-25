@@ -90,11 +90,37 @@ Making clips with a connected tool that uses the person's plan allowance (Canva 
 3. **Choose the provider** (config and the person decide, not you): `manual` (free; hosts A, B, C), or a paid direct API (hosts B and C; host A only under R-11 above): `fal-video` (Kling and Seedance on fal; `FAL_KEY`), `gemini-video` (Google's Gemini Omni Flash, the Gemini API's replacement for Veo; `GEMINI_API_KEY`; always makes sound), `kling-video` (Kling's own API; `KLING_ACCESS_KEY` + `KLING_SECRET_KEY`; a prepaid Kling package) or `byteplus-video` (Seedance on BytePlus ModelArk; `ARK_API_KEY`; the model activated in the ModelArk console). A paid provider needs its key and a budget cap from `/akuko setup`. A model listed as **price unverified** in config cannot be priced or run; the command says so. A missing key is reported as a setup problem before anything is estimated, sent or counted; a missing budget is refused with the setup pointer.
 4. **`step --provider <id>`** makes the next job, by default **one shot**:
    - **Paid:** it prints the spend line with the arithmetic (for example `5 s x 0.07 USD/s = 0.35`). **Show it to the person and wait.** Nothing has been sent. The person approves on the board (or replies in the exact words of the line, `approve <amount> <CURRENCY>`); fold, then run `step` again. It then runs, records the clip and marks it `pending-review`. A declined spend sends nothing. `--scene <id>` or `--units a,b` batches several clips into one job with one approval for the total, only if the person asks.
-   - **Manual:** it prints the prompt package (the prompt, the start-frame file to attach, the length, the camera, the name to save as) and saves the job. Give it to the person. They bring the clip back by attaching it or dropping it in the folder: `ingest --job <id> --unit <clip id> --file <path> [--actual <cost they report>]`. No key or budget is needed.
+   - **Manual:** it prints the prompt package (the prompt, the start-frame file to attach, the length, the camera, the name to save as) and saves the job. Give it to the person. They bring the clip back by attaching it or dropping it in the folder: `ingest --job <id> --unit <clip id> --file <path> [--actual <cost they report>]`. No key or budget is needed. Ingest stores the file as it is, then (code, not judgement):
+     - **Length.** It reads the clip's length from its header and compares it with the shot's `duration_s`. A clip shorter than the shot prints, and adds as an agent comment on the clip, "Clip runs 3 s; the shot is 3.5 s: the last frame needs holding for 0.5 s at assembly" (the Resolve export leaves that time empty; akuko never stretches or freezes a clip). A clip more than 0.5 s longer gets "the export uses its first 6 s and cuts the last 2 s". It never refuses: tell the person, who decides whether to make a longer clip, hold the frame, or change the shot in breakdown.
+     - **Sound.** A clip with a sound track keeps it, and when ffmpeg is on the PATH its sound is also copied to `sound-incoming/clip-audio/<shot>_clip-audio.wav` (never over an earlier one: `-2`, `-3`…). That WAV is not an asset and moves no status; the sound stage can use it for effects or room tone. No ffmpeg: one line says so. `--no-keep-audio` skips the copy.
+     - **A clip that already has a file** is refused, naming it, unless the person sent it back (below). Do not work around the refusal.
+     - **Then look at it** (judgement): flag what is wrong in the clip (`review/flags.ts add`) and put each flag to the person in chat at once (`actions/review.md` §3b "In chat").
 5. **Say what the command told you.** Each model makes clips of set lengths: Kling 2.5 Turbo and 2.6 make 5 or 10 s (on fal and on Kling's own API), Kling 3.0 3 to 15 s; Seedance 2.0 (and 2.0 Fast) any whole second from 4 to 15 s, Seedance 2.5 from 4 to 30 s (on fal and on BytePlus); Gemini Omni Flash 3 to 15 s, 16:9 or 9:16 only (`--model`, with a variant such as `bytedance/seedance-2.0/image-to-video#720p` or `kling-v3#pro`; ids and per-second prices are in `../providers/config.json`). By default the clip **covers the shot**: the shortest length that is at least as long (on Kling a 6 s shot gets a 10 s clip, a 5 s shot a 5 s clip; on Seedance a 6.2 s shot gets 7 s and a 3 s shot 4 s), because a short clip cannot be stretched in the editor while a long one is trimmed there. The spend line shows what is billed beyond the shot ("10 s billed for a 6 s shot"). If the person wants to spend less, `--fit nearest` takes the closest length instead (a 6 s shot gets 5 s); tell them it can be shorter than the shot. A shot longer than the model's longest clip gets the longest, and the command says so. Also pass on that sound is off. Do not choose `--fit nearest` yourself.
 6. **Audit each clip** before telling the person it is ready: it starts from the key frame, characters and place do not change, the motion matches the written action and camera move, no morphing, no text. If one fails, say what is wrong and offer another try (paid: a new approval, and it counts against the limit below). Do not hide a bad clip.
 7. **Stop at the review gate.** Everything made is `pending-review` and the stage is `in-review`. The person reviews each clip on the board. Don't call anything approved.
 8. **After the person's answers**: fold, `sync`, then `step` again for the next shot.
+
+## Same-angle continuity chain
+
+Clips that share a camera angle must start from where the last one ended, or the set, props and faces jump between cuts. Example: in a two-person café scene the chains might be "first character single", "profile two-shot" and "second character at the booth".
+
+1. **Angle groups.** Group the shots by camera angle. If the shots carry an `angle` (`../profiles/film/breakdown.md`), the chain is the shots of one `angle` in shot order; otherwise group them yourself and tell the person the groups.
+2. **Before each clip (the default for every shot after the first in a chain):**
+   - Take the last frame of the previous approved clip in the same angle: `ffmpeg -sseof -0.1 -i prev.mp4 -frames:v 1 -update 1 end.jpg`.
+   - Make this shot's start still by **editing that end frame**, literally: keep everything in it and change only this shot's action, in one sentence ("he now holds the cup in both hands"; "she has turned to the window"). Use the edit prompt of `keyframes.md` §Continuity rules (rule 4). Do this even when the key frame made from the blocking and references looks close: an edit of the end frame keeps the set, props, light and faces exactly; a fresh generation never quite does.
+   - Get the still approved, then make the clip.
+   - Generate from the blocking and references only for the **first** shot of a chain (no approved clip from that angle yet), or when the person asks for a fresh take.
+3. **One-off angles** borrow from the nearest matching frame (for example the plate from the previous clip that shows it).
+4. **Hidden faces.** If the start frame hides a face (hands or a napkin over it), the model invents one. Use Start + End frames: take a bad take's last frame, correct the face from that angle's previous clip, and set it as the End frame.
+5. **Clip prompt template:**
+   - "locked-off static camera, no camera move";
+   - fixed character traits (for example "SHORT neatly trimmed beard");
+   - the list of props to keep exactly as in the start frame;
+   - "no other people/tables, no text, no music".
+6. **Length.** Pick the model length at or above the planned shot length (3 s or 5 s). Assemble trims to the plan. Some tools have a floor (Google Flow's shortest clip is 3 s):
+   - **Shot shorter than the clip:** the shot is cut from the clip's start. That works when the key frame is the shot's first beat; if the action the shot needs comes later in the clip, say so.
+   - **Shot longer than the clip** (a 3.5 s shot on a 3 s clip): `assemble rough` holds the clip's last frame for the rest, and the Resolve export leaves that time empty (akuko never stretches a clip). Ingest says so in a comment on the clip (step 4). Tell the person when a shot will end on a held frame, so they can choose a longer clip instead.
+7. **After download:** keep the file as it came, sound and all. Clips from Google Flow and Gemini Omni Flash come with sound (room tone, small effects such as cutlery, steam, a door) that can become the film's effects and room tone. Do not strip it before ingest: ingest stores the clip unchanged and copies its sound out to `sound-incoming/clip-audio/` (step 4). Build a 4–6 frame contact strip and check it against the start frame. Flag any readable text (menus, signs) when asking for approval.
 
 ## When a clip is still running: `collect`
 
@@ -106,7 +132,7 @@ If a run fails (the provider refused it, the request failed, no clip came back),
 
 ## Sound
 
-Clips are made **silent** by default; sound has its own stage. If the person asks for the model's own sound, pass `--audio`. It costs more (a different price in config), it changes the job, so it needs a fresh approval, and not every model has it (the command says so). Do not turn it on yourself.
+Clips are made **silent** by default; sound has its own stage. A clip that comes with sound anyway (Gemini Omni Flash always makes it; Google Flow clips have it) is ingested as it is: ingest copies its sound to `sound-incoming/clip-audio/` for the sound stage (§Same-angle continuity chain, step 7). If the person asks for the model's own sound, pass `--audio`. It costs more (a different price in config), it changes the job, so it needs a fresh approval, and not every model has it (the command says so). Do not turn it on yourself.
 
 ## The retry limit
 
@@ -115,6 +141,8 @@ Video is priced per second, so a retry loop is where money goes. Each shot may h
 ## When a person sends a clip back
 
 Folding turns it into `needs-rework` with their words. Run `step --units <clip id>` for it: the old file is cleared (it stays stored; the "Revised: ..." comment says where), their words are added to the prompt, the new take fills the same asset (job `..._r<n+1>`), and it goes to `pending-review` again. A paid regeneration needs a new approval and counts toward the limit.
+
+With the manual provider the person may already have a new clip. Once the clip is `needs-rework`, `ingest` it (into the new job or the one that made the old take): it fills the same asset, the old file stays stored, a "Revised: …" comment says where, and the clip goes to `pending-review`. A clip that has a file and was **not** sent back (waiting for review or approved) is refused with a message naming it: ask the person to send it back first (Request changes), then ingest again. Only on the person's word, `--new-take` keeps the file as a separate take beside the clip instead; that take is a unit of its own, and the stage cannot close until a person has reviewed it too.
 
 ## Rules check
 
