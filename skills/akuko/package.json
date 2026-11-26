@@ -1,6 +1,6 @@
 {
   "name": "akuko-skill",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "Runtime dependencies of the akuko skill. Run `npm install` in this folder once; `bash scripts/doctor.sh` checks it.",
   "license": "Apache-2.0",
